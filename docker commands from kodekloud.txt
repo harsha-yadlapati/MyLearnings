@@ -1,0 +1,169 @@
+docker commands from kodekloud
+
+
+docker version
+docker run <image_name> --> it starts a new container -each time
+docker run nginx --> starts the nginx if it is available on local host else gets it from dockerhub
+docker run redis:4.0 --> to chose specific version of the image--> (the value after redis is called tag and all the available tags can be noted from dockerhub)
+docker run -d nginx --name <simple_name_for container>--> server starts in detached mode (in the background)
+docker run -d  centos sleep 30 --> starts container in detached mode and sleeps for 30 sec, before exiting
+docker run -it centos  bash --> logs into container
+docker run ubuntu cat /etc/*release* --> apend a command to  docker
+
+docker run -it <sample image> -->  (-i starts intractive mode and this way we can give the stdin values, and -t provides the terminal for stdout)
+
+docker run -p 8080:80 <image_id> --> maps the 8080 post of VM to 80 port of container
+
+docker conatiner has its own isolated file system, so when container is removed the data will be lost, in order to prevent data loss we need to map the host directory path, container directory path.
+ 
+docker run -v /opt/datadir:/var/lib/mysql <image> --> same as port option above where we map host port to container port
+
+cat /etc/*release* --> provides the info on OS of host
+
+docker attach <container_id> --> Use docker attach to attach your terminal's standard input, output, and error (or any combination of the three) to a running container using the container's ID or name.
+
+
+docker start <container_name> --> starts stoped container
+
+docker run -p 38282:8080 kodekloud/simple-webapp:blue
+docker run -e APP_VAR=Blue <image> --> sets the env varible APP_VAR , which is used by image once it is running
+docker run -e APP_COLOR=blue -p 38282:8080 --name blue-app kodekloud/simple-webapp
+
+docker run --links  (can be used to link two containers together) (this usage is deprecate and we will use docker swarm and networking)
+EG : docker run -d -p 5000:80 --name votingApp --link redis:redis voting-app
+
+when we use --links --> basically in creates a host name in /etc/hosts file of the node
+
+docker build DOCKERFILE -t <dockerRepo/image_name> --> docker build is used to build the docker image and -t is used to tag it --> 
+docker build -t whenry/fedora-jboss:latest -t whenry/fedora-jboss:v2.1 .
+##############################
+
+DOCKERFILE
+
+FROM Ubuntu
+RUN apt-get update
+RUN apt-get install -y python
+RUN apt-get install -y python-pip
+RUN pip install flask
+RUN pip install flask-mysql
+
+COPY . /opt/source
+
+ENTRYPOINT FLASK_APP=/opt/source/app.py flask run
+
+##############################
+
+ENTRYPOINT vs CMD --> the parameter to "docker run <image>""  will the appended to entryPoint but in case of CMD, it will be replaced
+
+FROM Ubuntu  --> docker run <image> (if paramater is specified like sleep 10, CMD will be overwritten)
+CMD sleep 5
+
+FROM Ubuntu --> docker rim <image> 10
+ENTRYPOINT [Sleep]
+
+FROM Ubuntu --> docker rium <image>  ( if paramater is not specified 5 will be used by default)
+ENTRYPOINT [Sleep]
+CMD [5]
+#####################################
+
+
+
+docker history <image_name>  --> gives the details of image  history --> it is like comit history
+
+when building the docker image, if failures are faced in any layer, the above layers will be cached and build starts from failed layers (excaple source code)
+anything can be containerise 
+
+
+docker ps -a --> gives the list of containers
+docker ps --> gives the list of running containers
+
+docker inspect <conatiner_id> provids more details on container in additon to what is shown in "docker ps" like ip address , evn varuiables and all
+
+docker logs <container_id>
+
+docker stop <container_name> or <container_id>
+docker rm <container_name> 
+docker rmi <image_name> --> will only when no container is using this image
+docker images (lists available images)
+docker rmi <image_name>
+docker pull <image name>
+docker exec <container_name> <command> --> docker exec <container_name> ssh (to login to conatiner) --> used to run the command on a running container
+
+
+Docker compose --> docker-compose.yml --> used to create application stack.. in one go by adding all the related comands in in single yml file
+docker-compose up --> brings up application stack
+docker compose build
+docker compose version1  , 
+version 2(in version 2 we dont need to use links as the dedicated network will be created here and the containers will be identified based on  names) (you have depends_on option version 2 which can be used for implementing the startup order for application stack) 
+version 3 --> comes with support for docker swarm
+
+
+docker engine is nothing but the host where docker is installed
+docker -H=<remote ip> run <image> --> will run the docker command on remote hosts where docker engine is running
+docker uses namespaces to isolate the workspace 
+
+By default container has no restriction on how much resouce it can use in the host. But you can use cGroups --> control groups to restrice HW usage --> 
+eg:  docker --cpus=0.5 <image_name> --> container cannot take more that 50% of hosts CPU 
+docker run --memory=100m <image_name>
+
+
+
+docker volume create data_volume
+docker run -v data_volume:/var/sql/lib --> volume mounting --> mounts the volume from /var/lib/docker/volumes
+Bind Mount --> mounts already existing dir on the docker host
+
+latest option (more readable)
+
+docker run --mount type=bind,source=/data/db,target=/var/lib/mysql mysql
+
+Network :
+when we install docker it by default creates 3 networks, "Bridge" , "None" and "host"
+Bridge is default --> private internal network --> all the containers get internal IP address (172.17.*.* series)
+
+default bridge network
+
+none --> containers are not attached to any netwok
+docker run ubuntu --network=none
+docker run ubuntu --network=host
+
+user-defined network --> 
+docker network create \
+--driver bridge \
+--subnet 182.18.0.0/16
+custom-isolated-network
+
+docker network create --subnet 182.18.0.1/24 --driver bridge wp-mysql-network --gateway 182.18.0.1
+
+docker network ls --> lists all the available networks
+All the containers in a docker host can resolve each other based on container name --> this is called embedded DNS(built in DNS server)
+
+
+docker run --name mysql-db -e MYSQL_ROOT_PASSWORD=db_pass123  --network wp-mysql-network mysql:5.6
+
+docker run --name webapp -p 38080:80 -e DB_Host=mysql-db --network wp-mysql-network kodekloud/simple-webapp-mysql
+
+Docker Registry
+
+docker run nginx -->  basically resolves to --> docker run docker.io/nginx/nginx --> (registry/account(user)/image(repository))
+gcr.io --> google cloud registry
+kubernetes-e2e-test-images-dnsutils
+we can also have private registry (aws,gcp and azure by default provide a private registry by default)
+docker login private-rigistry.io ---> you will access private registry
+docker run private-registry.io/apps/internal-app
+
+Deploy a private registry
+	docker run -d -p 5000:5000 --name private-registry registry:2 --> creates a private registry
+	docker image tag my-image localhost:5000/my-image --> tags our existing image with private registry name
+	docker push localhost:5000/my-image --> pushes our local image to private-registry created above
+
+
+Conatiner orchestration: docker swarm, kubernetes and mesos are providers for docker orchestration
+
+set of tools and scripts to host containers in productio env
+
+docker service create --replicas=100 <image_name> --> used in docker swarm --> this command should be run on docker swarm manager node
+docker swarm init -> initialize docker cluster
+
+
+revision done
+

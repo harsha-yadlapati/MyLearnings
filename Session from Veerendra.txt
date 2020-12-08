@@ -1,0 +1,133 @@
+Session from Veerendra
+###################
+
+docker build . --> creates image based on Dockerfile
+docker build -t <image_name> . --> creates image with a particular name
+docker images --> lists the images available on host
+docker ps --> lists docker containers that are running ( use option -a to list all the available containers)
+docker run -p 80:80 <image_id> --> creates container ( what is 80:80 , they seems to be ports but what does two numbers define?)
+docker start <container_id> --> startes the container
+dockerhub.com --> contains lot of sample images
+docker pull nginx --> pulls nginx  image from docker hub
+docker push <repository_name>
+docker rm <container_id>
+docker rmi <image_id>
+docker exec it <container_id>
+to make the containers available for prod, we use kuberneties
+
+when image is being created in local, from where the dependencies are pulled, is it from our local system or web? 
+docker run -p 80:80 <image_id> --> creates container ( what is 80:80 , they seems to be ports but what does two numbers define?)
+where are the logs available?
+
+Flask is a webserver for python
+
+where do we define dependences for the docker file ? 
+need knowledge on production systems?
+
+in zoom_0(3) file
+
+
+how to create docker file?  you mentioned it is created automatically, how?
+in Docker file "FROM ubuntu" --> will it create container with ubuntu OS? and on top of it if we are installing OS for each container wont this be heavy application ? instead why not use host OS?
+
+you created a docker file, and create EVN variable FLASK_APP , why do we need it? and how is it used 
+
+do we containerise, along with OS every time?
+
+kubectl create -f sripod.yaml ( this is single command used to create service, pod, replica or deployment , by the final object created will be decided based on kind mentioned in yaml file)
+kubectl get pods ( gives list of pods)
+kubectl get nodes
+kubectl get deployments 
+kubectl discribe pod <pod_name>
+kubectl label node <node_name> name=<req_name>
+kubectl apply -f <file_name> --> apply changes of yaml file (basically update)
+kubectl create deploy 
+kubectl get deploy
+kubectl delete deplopy
+kubectl rollout history
+kubectl rollout undo <deployment_name>
+
+apiVersion: v1
+kind: Pod
+metadata:
+	name: sripod1
+	labels:
+		app: myapp
+		type: frontend
+spec:
+	containers:
+		- name: sricontainer
+		  image: <imagename_from_repository>
+
+apiVersion: v1
+kind: ReplicationController
+metadata:
+	name: myrc1
+	labels:
+		app: myapp
+		type: frontend
+spec:
+	
+	template: 
+		metadata: 
+			name: mypod
+			lables:
+				app: myapp
+				type: frontend
+
+		spec:
+			-containers:
+				name: mycontainer
+				image: nginx
+	replicas: 5
+	selector:
+		app: myapp
+		type: frontend 
+	
+
+
+What is replication controller? --> controler how many pods are running at any point of time
+
+multiple images in same container?
+
+kubectl label <node_name> <key:value> --> kubectl label <node_name> name:harsha
+
+nodeselector ? 
+
+Veerendra class --> 29/09
+
+Node Selector
+Node affinity
+
+equitybased selection --> node selector, replication controller
+setbased selection --> replicaset, node affinity
+
+kubectl lable
+
+pod affinity
+
+taints (taint is for node) and tolerations (tolerations in for pods) : 
+
+kubectl taint node <node_name> key=value:<Effect> --> effect can be NoSchedule , NoExecute ,  preferNoSchedule
+
+
+...............
+
+Deamon Set: --> creates 1 pod each in all the available nodes...
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,12 @@
+AWS ECS Workshop
+
+Everything is put into docker file(contains set of instructions) and artifact is created :) --> it is image
+ECS control plane is managed service, 
+CPU and Memory can be the metrics of HW, but in real world scenario, it can be the netrork traffic and queue depth , that we need to monitor to autoscale
+Attach IAM roles to containers, for granular level of access , which is similar to role attached to an EC2 instance
+
+ECS Cluster --> logical namespace where containers are going to run
+TASK in ECS is similar to POD in EKS
+Service --> is similar to deployments + replicaSets + service  in EKS
+
+FARGATE, removes the headache of scaling the containers and clusters

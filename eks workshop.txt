@@ -1,0 +1,439 @@
+eks workshop
+
+Users with AWS Management Console access can sign-in at: https://623924624070.signin.aws.amazon.com/console
+
+
+#### Create and delete cluster
+
+eksctl create cluster -f eksworkshop.yaml ---> command to create cluster and then run below command
+
+STACK_NAME=$(eksctl get nodegroup --cluster eksworkshop-eksctl -o json | jq -r '.[].StackName')
+ROLE_NAME=$(aws cloudformation describe-stack-resources --stack-name $STACK_NAME | jq -r '.StackResources[] | select(.ResourceType=="AWS::IAM::Role") | .PhysicalResourceId')
+echo "export ROLE_NAME=${ROLE_NAME}" | tee -a ~/.bash_profile
+
+eksctl delete cluster --name=eksworkshop-eksctl --> delete clusters
+############################
+
+
+Pod
+A thin wrapper around one or more containers
+DaemonSet
+Implements a single instance of a pod on a worker node
+Deployment
+Details how to roll out (or roll back) across versions of your application
+ReplicaSet
+Ensures a defined number of pods are always running
+Job
+Ensures a pod properly runs to completion
+Service
+Maps a fixed IP address to a logical group of pods
+Label
+Key/Value pairs used for association and filtering
+
+When we a Create cluster --> it will create HA control plane + IAM integration + certificate management + setup LB --> once cluster is ready we will get the endpoint details 
+
+
+#### Install kubectl
+
+sudo curl --silent --location -o /usr/local/bin/kubectl \
+   https://amazon-eks.s3.us-west-2.amazonaws.com/1.17.11/2020-09-18/bin/linux/amd64/kubectl
+sudo chmod +x /usr/local/bin/kubectl
+
+#### Install aws 
+sudo pip install --upgrade awscli && hash -r
+
+
+#### Install jq, envsubst (from GNU gettext utilities) and bash-completion 
+sudo yum -y install jq gettext bash-completion moreutils
+
+jq --> json parser
+yq --> yaml parser
+
+
+#### Install yq for yaml processing
+
+echo 'yq() {
+  docker run --rm -i -v "${PWD}":/workdir mikefarah/yq yq "$@"
+}' | tee -a ~/.bashrc && source ~/.bashrc
+
+########
+
+Attaching the IAM role to EC2 instance will give additional permissions 
+In cloud9 there is option to turn off the temporary credentials, and we can delete the ~.aws/credentials file to ensure we are not using these (--> remember the credential issues you faced during python sample webservice creation)
+
+###### Set default AWS variables
+
+echo "export ACCOUNT_ID=${ACCOUNT_ID}" | tee -a ~/.bash_profile
+echo "export AWS_REGION=${AWS_REGION}" | tee -a ~/.bash_profile
+aws configure set default.region ${AWS_REGION}
+aws configure get default.region
+
+remember we have to add the info in ~/.bash_profile to save the env varialbles 
+
+########## 
+
+########### Create a custome managed KMS
+Create a CMK for the EKS cluster to use when encrypting your Kubernetes secrets:
+
+aws kms create-alias --alias-name alias/eksworkshop --target-key-id $(aws kms create-key --query KeyMetadata.Arn --output text)
+export MASTER_ARN=$(aws kms describe-key --key-id alias/eksworkshop --query KeyMetadata.Arn --output text)
+echo "export MASTER_ARN=${MASTER_ARN}" | tee -a ~/.bash_profile
+###########
+
+
+########### CREATE K8 cluster
+#### Download ekctl
+
+curl --silent --location "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp
+
+sudo mv -v /tmp/eksctl /usr/local/bin
+eksctl completion bash >> ~/.bash_completion
+. /etc/profile.d/bash_completion.sh
+. ~/.bash_completion
+
+
+#### Create K8 cluster using eksctl
+
+cat << EOF > eksworkshop.yaml
+---
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+
+metadata:
+  name: eksworkshop-eksctl
+  region: ${AWS_REGION}
+  version: "1.17"
+
+availabilityZones: ["${AWS_REGION}a", "${AWS_REGION}b", "${AWS_REGION}c"]
+
+managedNodeGroups:
+- name: nodegroup
+  desiredCapacity: 3
+  ssh:
+    allow: true
+    publicKeyName: eksworkshop
+
+# To enable all of the control plane logs, uncomment below:
+# cloudWatch:
+#  clusterLogging:
+#    enableTypes: ["*"]
+
+secretsEncryption:
+  keyARN: ${MASTER_ARN}
+EOF
+
+
+#### Create and delete cluster
+
+eksctl create cluster -f eksworkshop.yaml ---> command to create cluster and then run below command
+
+STACK_NAME=$(eksctl get nodegroup --cluster eksworkshop-eksctl -o json | jq -r '.[].StackName')
+ROLE_NAME=$(aws cloudformation describe-stack-resources --stack-name $STACK_NAME | jq -r '.StackResources[] | select(.ResourceType=="AWS::IAM::Role") | .PhysicalResourceId')
+echo "export ROLE_NAME=${ROLE_NAME}" | tee -a ~/.bash_profile
+
+eksctl delete cluster --name=eksworkshop-eksctl --> delete clusters
+############################
+
+#################### Deploy Kubectl dashboard
+Kubectl Proxy : 
+
+Creates a proxy server or application-level gateway between localhost and the Kubernetes API Server. It also allows
+serving static content over specified HTTP path. All incoming data enters through one port and gets forwarded to the
+remote kubernetes API Server port, except for the path matching the static content path.
+
+export DASHBOARD_VERSION="v2.0.0"
+
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/${DASHBOARD_VERSION}/aio/deploy/recommended.yaml
+
+Since dashboard  is deployed to our private cluster, we need to access it via a proxy. kube-proxy is available to proxy our requests to the dashboard service. In your workspace, run the following command:
+
+kubectl proxy --port=8080 --address=0.0.0.0 --disable-filter=true &
+
+aws eks get-token --cluster-name eksworkshop-eksctl | jq -r '.status.token'
+
+###################### 
+
+
+################### Deploy Sample microservice
+
+#### Sample NODE JS app
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ecsdemo-nodejs
+  labels:
+    app: ecsdemo-nodejs
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ecsdemo-nodejs
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: ecsdemo-nodejs
+    spec:
+      containers:
+      - image: brentley/ecsdemo-nodejs:latest
+        imagePullPolicy: Always
+        name: ecsdemo-nodejs
+        ports:
+        - containerPort: 3000
+          protocol: TCP
+
+The containers listen on port 3000, and native service discovery will be used to locate the running containers and communicate with them.
+
+nodePort: The port on the node where external traffic will come in on
+port: The port of this service
+targetPort The target port on the pod(s) to forward traffic to
+
+kubectl scale deployment ecsdemo-nodejs --replicas=3
+
+
+for some reason the pod status may be in pending state, in that case use describe pod to get more info 
+kubectl describe pod ecsdemo-crystal-6d5f6f4b47-l9xc2  
+
+
+################ HELM CHARTS
+
+Helm is a package manager for Kubernetes that packages multiple Kubernetes resources into a single logical deployment unit called a Chart. Charts are easy to create, version, share, and publish. Charts are similar to yum in Linux
+
+Charts can be simple, describing something like a standalone web server (which is what we are going to create), but they can also be more complex, for example, a chart that represents a full web application stack, including web servers, databases, proxies, etc.
+
+using templetes directive we can parameterize the values... like we did using AppConfig ---> where you get different values for prod/uat/dev
+
+curl -sSL https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash
+download the stable repository
+helm repo add stable https://charts.helm.sh/stable
+
+download bitnami repository 
+helm repo add bitnami https://charts.bitnami.com/bitnami
+helm repo update
+
+helm basically creates, a deployment, pod, service 
+helm install mywebserver bitnami/nginx 
+
+helm list
+
+helm uninstall mywebserver
+
+kubectl describe deployment mywebserver-nginx
+
+##Custom Helm Chart : 
+
+ helm create eksdemo-helmCharts
+
+/eksdemo
+  /Chart.yaml  # a description of the chart
+  /values.yaml # defaults, may be overridden during install or upgrade
+  /charts/ # May contain subcharts
+  /templates/ # the template files themselves
+  ...
+
+ helm install --debug --dry-run workshop <path to helm chart dir>
+
+ helm install workshop ~/environment/eksdemo 
+
+ helm upgrade workshop ~/environment/eksdemo --> to upgrade changes made to the helm chart
+
+helm status workshop
+helm history workshop
+ helm rollback workshop 1
+ 
+################## Health Checks
+
+Liveness probes are used in Kubernetes to know when a pod is alive or dead. A pod can be in a dead state for a variety of reasons; Kubernetes will kill and recreate the pod when a liveness probe does not pass.
+
+Readiness probes are used in Kubernetes to know when a pod is ready to serve traffic. Only when the readiness probe passes will a pod receive traffic from the service; if a readiness probe fails traffic will not be sent to the pod.
+
+we can set up 3 types of probes, command, http, and tcp
+
+cat <<EoF > ~/environment/healthchecks/liveness-app.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: liveness-app
+spec:
+  containers:
+  - name: liveness
+    image: brentley/ecsdemo-nodejs
+    livenessProbe:
+      httpGet:
+        path: /health
+        port: 3000
+      initialDelaySeconds: 5
+      periodSeconds: 5
+EoF
+
+kubectl describe pod liveness-app
+kubectl exec -it liveness-app -- /bin/kill -s SIGUSR1 1
+kubectl logs liveness-app
+
+kubectl exec -it readiness-deployment-589b548d5-jv89x  -- rm  /tmp/healthy
+ kubectl exec -it readiness-deployment-589b548d5-jv89x  -- touch  /tmp/healthy
+
+
+############  Autoscaling clusters and applications
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+The AWS ALB Ingress Controller for Kubernetes is a controller that triggers the creation of an Application Load Balancer (ALB) and the necessary supporting AWS resources whenever an Ingress resource is created on the cluster with the kubernetes.io/ingress.class: alb annotation. The Ingress resource configures the ALB to route HTTP or HTTPS traffic to different pods within the cluster. The ALB Ingress Controller is supported for production workloads running on Amazon EKS clusters.
+
+
+ aws sts get-caller-identity --output text --> gives the Account details we are using
+ aws sts get-caller-identity --query Arn | grep eksworkshop-admin -q && echo "IAM role valid" || echo "IAM role NOT valid"
+ aws configure set default.region ${AWS_REGION}
+aws configure get default.region
+aws sts get-caller-identity --output text --query Account
+aws ec2 import-key-pair --key-name "eksworkshop" --public-key-material file://~/.ssh/id_rsa.pub 
+
+AWS CMK --> custom managed key 
+aws kms create-alias --alias-name alias/eksworkshop --target-key-id $(aws kms create-key --query KeyMetadata.Arn --output text)
+
+export MASTER_ARN=$(aws kms describe-key --key-id alias/eksworkshop --query KeyMetadata.Arn --output text) --> create a variable 
+echo "export MASTER_ARN=${MASTER_ARN}" | tee -a ~/.bash_profile --> add the variale to .bash_profile 
+
+EKSCTL codifies the creation of EKS cluster
+
+eksctl is a tool jointly developed by AWS and Weaveworks that automates much of the experience of creating EKS clusters.
+
+managednodegroups... we just give number of nodes, OS, patching and all is taken care by aws  
+fargate --> compute is provided... we just need to launch a pod.. we dont need to manage nodes --> fargate doesnt work with classic load balancer, it just works with Application laod balancer (ALB)
+*  fargate you dont need to worry about underlaying nodes, --> fargate has unlimited resources
+*  nodegroup has limitation on number of EC2 instances available
+
+
+placement group is used for low latency requirements ---> auto scaling group is required from high availability
+
+
+
+STACK_NAME=$(eksctl get nodegroup --cluster eksworkshop-eksctl -o json | jq -r '.[].StackName')
+ROLE_NAME=$(aws cloudformation describe-stack-resources --stack-name $STACK_NAME | jq -r '.StackResources[] | select(.ResourceType=="AWS::IAM::Role") | .PhysicalResourceId')
+echo "export ROLE_NAME=${ROLE_NAME}" | tee -a ~/.bash_profile
+
+aws cloudformation describe-stack-resources --stack-name $STACK_NAME
+
+# kill proxy
+pkill -f 'kubectl proxy --port=8080'
+
+# delete dashboard
+kubectl delete -f https://raw.githubusercontent.com/kubernetes/dashboard/${DASHBOARD_VERSION}/aio/deploy/recommended.yaml
+
+unset DASHBOARD_VERSION
+ ? what is kubectl proxy? 
+ kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/${DASHBOARD_VERSION}/aio/deploy/recommended.yaml
+ kubectl proxy --port=8080 --address=0.0.0.0 --disable-filter=true &
+
+In kubernetes we declare the end state and it automatically figuers out what resources we need
+namespace a logical isolation in kubectl?
+service provides info on how to access the applications
+
+if we use the cluster type loadbalancer, then the K8s will automatically create the LB native to the cloud provider automatically 
+
+ECS --> single orchestrater for single region --> used basically for massive scale like managing 1000s of containers which is not possible with K8's
+EKS --> 1 K8s orchestrator for each cluster
+
+
+Notice there is no specific service type described. When we check the kubernetes documentation we find that the default type is ClusterIP. This Exposes the service on a cluster-internal IP. Choosing this value makes the service only reachable from within the cluster
+
+Notice type: LoadBalancer: This will configure an ELB to handle incoming traffic to this service.
+
+Compare this to kubernetes/service.yaml for one of our backend services:
+
+######### Health Checks
+
+Liveness probes are used in Kubernetes to know when a pod is alive or dead. A pod can be in a dead state for a variety of reasons; Kubernetes will kill and recreate the pod when a liveness probe does not pass.
+
+Readiness probes are used in Kubernetes to know when a pod is ready to serve traffic. Only when the readiness probe passes will a pod receive traffic from the service; if a readiness probe fails traffic will not be sent to the pod. 
+
+while creating the pods we can do a check with http, tcp or execute a command : ref https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/ or https://www.eksworkshop.com/beginner/070_healthchecks/cleanup/
+
+####### AutoScaling
+Horizontal Pod Autoscaler (HPA) scales the pods in a deployment or replica set. It is implemented as a K8s API resource and a controller. The controller manager queries the resource utilization against the metrics specified in each HorizontalPodAutoscaler definition. It obtains the metrics from either the resource metrics API (for per-pod resource metrics), or the custom metrics API (for all other metrics).
+
+Cluster Autoscaler (CA) a component that automatically adjusts the size of a Kubernetes Cluster so that all pods have a place to run and there are no unneeded nodes.
+
+Horzontal scaling --> increase number of instances --> no downtime --> when you have defined computation needs you can go with this
+vertical scaling is --> increase size of instance  --> this may cause service restart, it is use ful when you dont know what are the requirements for your request processing
+
+Metrics Server
+
+Kubectl get apiServie
+
+
+INTRO TO RBAC#########
+
+Role-based access control (RBAC) is a method of regulating access to computer or network resources based on the roles of individual users within an enterprise.
+
+
+NameSpace ---> 
+
+RBAC is a native authertication system in Kubernetes and IAM is native to AWS
+RBAC cluster role
+
+RBAC role ---> related to namespace
+RBAC cluster role --> related to cluster
+
+A role all ways sets permision with in a namespace, so when you create a role you have to specify the namespace it belongs!
+
+RoleBinding and clusterRolebinding!
+
+kubectl namescace
+add an IAM role r user to an Amazon EKS cluster 
+ConfigMap
+ 
+
+AssumeRoleWithWebIdentity
+
+Kubernetes is always working to make an object’s “current state” equal to the object’s “desired state.” A desired state can describe:
+
+

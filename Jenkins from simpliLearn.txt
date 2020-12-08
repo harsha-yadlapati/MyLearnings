@@ -1,0 +1,52 @@
+#### Jenkins from simpliLearn
+
+jenkins pipeline
+
+codecomint - build --> test --> Release --> Deploy/deliver --> production
+
+jenkins architecture -->
+
+jenkins --> CI server 
+maven --> build server
+selenum --> test server
+ we need distributed jenkins server to handle multiple builds at a time
+
+ Master-Slave --jenkins
+
+ there are hundreds of plugins for jenkins :
+ backup jenkins using a plugin ...
+
+ executer in jenkins--- tells howmany threads can run at a time
+
+ global tool configuration is something where you configure the.. tools for jenkins --> like JDK, GIT, Maven --etc
+
+ configure global security
+
+ build triggers will help , in triggering the builds ... 
+
+ role based access plugin, will control the access to jenkins server 
+ add git repo links in source code management to pull the code from git 
+
+ maven can be used to run various targets, like we used to have multiple targets in build.xml file
+
+ created frestyle projects -->
+ created a project to run the "shell command" --> the sheduled trigger to create builds regularly --> they created the project to get the code from git and build that code ---> they created a project to use maven and run in tomcat
+
+ mvn package --> builds the package
+
+ JNLP(java network launch protocals) ports are used to create master slave configuration, in jenkins
+
+ using manage nodes you can add the slave to jenkins Master
+
+ A lable expressionw will restrict we where a job can run from... in master-slave config
+
+ plugins, to manage backup --> using which you can create the backup and restore it.
+
+ plugins to manage jenkin pipeline ---> delivery pipeline plugin (permitive future prior to jenkins 2.0)
+
+ Using groovy scripts we can write the pipelines in jenkins (scripted pipelines) --> you have a option create the script automaticlly 
+
+ you can create maven project from jenkins
+
+
+

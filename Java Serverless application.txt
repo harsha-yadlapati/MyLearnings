@@ -1,0 +1,48 @@
+Java Serverless application
+
+WS Serverless Application Model (AWS SAM) is an open-source framework that developers use to build production-grade serverless applications on AWS.
+
+AWS SAM provides you with a command line tool, the AWS SAM CLI, that makes it easy for you to create and manage serverless applications. It particularly makes easy the scaffolding of a new project, as it creates the initial skeleton of a hello world application, so you can use it as a baseline and continue building your project from there.
+
+sam init
+sam build 
+sam local start-api --port 8080
+sam deploy
+sam validate
+The best way to automate the creation of CI/CD pipelines is by provisioning them programmatically via Infrastructure as Code. 
+
+serverless developers use the SAM framework to define their applications, SAM CLI to build them and deploy them and AWS CDK to provision any infrastructure related resources, like their CI/CD Pipeline. The nice thing about these tools is that they all share a common ground: CloudFormation.
+
+
+cdk init --language java
+mvn package
+
+cdk deploy 
+
+Every Code Pipeline needs an artifacts bucket, also known as Artifact Store. CodePipeline will use this bucket to pass artifacts to the downstream jobs and its also where SAM will upload the artifacts during the build process.
+
+Also notice how we define an object sourceOutput as a pipeline artifact; This is necessary for any files that you want CodePipeline to pass to downstream stages. In this case, we want our source code to be passed to the Build stage.
+Artifact sourceOutput = new Artifact("sourceOutput");
+
+
+The Source Stage is the first step of any CI/CD pipeline and it represents your source code. This stage is in charge of triggering the pipeline based on new code changes (i.e. git push or pull requests). In this workshop, we will be using AWS CodeCommit as the source provider, but CodePipeline also supports S3, GitHub and Amazon ECR as source providers.
+
+
+The Build Stage is where your Serverless application gets built and packaged by SAM. We are going to use AWS CodeBuild as the Build provider for our pipeline. It is worth mentioning that CodePipeline also supports other providers like Jenkins, TeamCity or CloudBees.
+
+AWS CodeBuild is a great option because you only pay for the time where your build is running, which makes it very cost effective compared to running a dedicated build server 24 hours a day when you really only build during office hours. It is also container-based which means that you can bring your own Docker container image where your build runs, or use a managed image provided by CodeBuild.
+
+A Buildspec File is a series of commands in YAML format that CodeBuild executes to build your application. This file is placed in the root folder of a SAM application and CodeBuild will automatically find it and run it during build time.
+
+This topic provides important reference information about build specification (buildspec) files. A buildspec is a collection of build commands and related settings, in YAML format, that CodeBuild uses to run a build. You can include a buildspec as part of the source code or you can define a buildspec when you create a build project. 
+
+
+The Deploy Stage is where your SAM application and all its resources are created an in an AWS account. The most common way to do this is by using CloudFormation ChangeSets to deploy. This means that this stage will have 2 actions: the CreateChangeSet and the ExecuteChangeSet.
+
+
+A Canary Deployment is a technique that reduces the risk of deploying a new version of an application by slowly rolling out the changes to a small subset of users before rolling it out to the entire customer base.
+
+AWS Lambda allows you to publish multiple versions of the same function. Each version has its own code and associated dependencies, as well as its own function settings (like memory allocation, timeout and environment variables). You can then refer to a given version by using a Lambda Alias. An alias is nothing but a name that can be pointed to a given version of a Lambda function.
+
+AWS CodeDeploy provides an intuitive turn-key implementation of this functionality integrated directly into AWS SAM. Traffic-shifted deployments can be declared in a SAM template, and CodeDeploy manages the function rollout as part of the CloudFormation stack update. CloudWatch alarms can also be configured to trigger a stack rollback if something goes wrong.
+

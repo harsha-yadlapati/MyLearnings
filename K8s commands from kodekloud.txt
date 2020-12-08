@@ -1,0 +1,217 @@
+K8s commands from kodekloud
+
+One or More API Servers: Entry point for RESTAPi / kubectl
+
+etcd: Distributed key/value store
+
+Controller-manager: Always evaluating current vs desired state
+
+Scheduler: Schedules pods to worker nodes
+
+k8 conatins
+ api server
+ scheduler
+ container runtime
+ etcd
+ controller
+ kubelet
+
+PODS, Replicasets, ReplicationControllers, Deployments, Services, Labels, 
+
+kubectl run <pod_name> --image=<image_name> --> deploy an applictaion in cluster --> basicaly creates a pod and conatiner in pod
+kubectl cluster-info
+kubectl get nodes
+kubectl get pods -w ( we can check the live status)
+kubectl get replicasets
+kubectl discribe pod <pod_name> 
+kubectl get pods -o wide --> provides addtitonal information 
+kubectl create deployment nginx --image=nginx
+kubectl create deployment hello-minikube --image=k8s.gcr.io/echoserver:1.10
+kubectl logs liveness-app
+
+
+minikube service hello-minikube --url
+
+kubectl delete <obj> <obj_name> (obj can be pod, deployment, service, replicaset... etc)
+kubectl delete services hello-minikube
+kubectl delete deployment hello-minikube
+kubectl delete replicaset <replicaset_name>
+kubectl edit pod redis
+
+kubectl get replicaset
+kubectl get replicationcontroler
+kubectl discribe replicaset <replicaset_name>
+
+kubectl replace -f replicaset-definition.yml (here we need to modify the files to increase the replicals but in below case no need to change it)
+kubectl scale --replicas=6 -f replicaset-definition.yml or kubectl scale --replicas=6 replicset myrc1 (these two options doesnt change the replicas value in file)
+
+
+kubectl create -f pod_def.yml
+kubectl edit <obj> <obj_name>
+kubectl edit replicaset <repliset_name>
+
+labels and selectors --> matchLables in selector act as a filters for replica set and matches any existing pods
+k8 use yml files as inputs to create the objects like pods, nodes, deployments etc..
+
+
+deployments? --> the yml file is similar to replicaset, only change will be in kind we will make it as Deployment, so replicasets and related pods are created automatically when we create deployments --> using deployments you have option for rollback
+
+
+kubectl create -f deployments.yml
+kubectl get deployments 
+kubectl get all (shows all the created objects)
+
+kubectl create -f deployments.yml --record ==> records change cause
+
+Deployment describes how to deploy our containers
+Service describes how to reach our containsers
+
+A new rollout creates new deployment revision with new version
+
+kubeclt rollout status <deployment_name>
+kubectl rollout history <deployment/_name>
+kubectl rollout undo <deployment_name> --> rollbacks latest deployment
+kubectl rollout undo deployment.v1.apps/nginx-deployment --to-revision=2 --> rollbacks to selected revision number
+
+Deployment Strategy --> rolling deployment or recreate 
+
+
+Networking --> in docker a container is assigned an IP address, but in K8 a pod is assigned an IP address
+When k8 is initially set up, we create an  an internal private network with IP address  
+
+Networking some more info ? 
+
+
+Services.... --> helps us to connect the applictions with each other and outside world in K8's --> i.e provide loose coupling b/w micro services --> service is used only when it needs to be accessed by user or some other service
+
+One use case of service is to listen on a port on the node and forward the request to the pod listenig on another port. 
+Different types of servces:
+	NodePort --> the valid range is 30000 to 32767 (NodePort service is used to load balance the requests between pods deployed on single node or multiple nodes in a cluster) --> it is used for external access
+	ClusterIP --> it is used for internal access --> if we dont specify this is default port
+	loadbalancer --> K8 have support to integrate with native cloud provider loadbalancers, in GCP or AWS
+
+#################
+apiVersion:  --> version of ks version (v1, apps/v1 .. etc, changes based on the kind mentioned below)
+kind: --> Pod, service, replicaset, deployment
+metadata: 
+
+spec: 
+#################
+
+conatiners are encapsulated in PODS... multiconatiner pods are used when you have a helper container which is needed along with our application , like webserver + application, in such cases we create multicontainer pods, but in case of high availability we create multiple pods of same application
+
+What is replication controller? --> controles how many pods are running at any point of time
+#################
+apiVersion: v1
+kind: ReplicationController
+metadata:
+	name: myrc1
+	labels:
+		app: myapp
+		type: frontend
+spec:
+	
+	template: 
+		metadata: 
+			name: mypod
+			lables:
+				app: myapp
+				type: frontend
+
+		spec:
+			containers:
+				- name: mycontainer
+				  image: nginx
+	replicas: 5
+
+#################
+Replica Set requires a selector definition in spec this helps to select/create the pods to monitor and the apiVersion we should use is apps/v1
+#################
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+	name: myrc1
+	labels:
+		app: myapp
+		type: frontend
+spec:
+	
+	template: 
+		metadata: 
+			name: mypod
+			lables:
+				app: myapp
+				type: frontend
+
+		spec:
+			containers:
+				- name: mycontainer
+				  image: nginx
+	replicas: 5
+	selector:
+		matchLables: 
+		  type: frontend
+		  
+#################
+#################
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+	name: mydeployment
+	labels:
+		app: myapp
+		type: frontend
+spec:
+	
+	template: 
+		metadata: 
+			name: mypod
+			lables:
+				app: myapp
+				type: frontend
+
+		spec:
+			containers:
+				- name: mycontainer
+				  image: nginx
+	replicas: 5
+	selector:
+		matchLables: 
+		  type: frontend
+		  
+#################
+
+
+labels and selectors --> matchLables in selector act as a filters for replica set and matches any existing pods
+kubectl replace -f replicaset-definition.yml
+kubectl scale --replicas=6 -f replicaset-definition.yml or kubectl scale --replicas=6 replicset myrc1 (these two options doesnt change the replicas value in file)
+ReplicaSet always ensures that there are only fixed number of pods for matching labels, if we create more pods with matching labels, they will be auto terminated
+
+
+how to see the audit log in docker and kubctl ? to check the history of changes happening in cluster 
+
+if I have pod definition labels as below and in replica set selectors match label has only type.. will the pods be matched?
+labels:
+	app: myapp
+	type: frontend
+selector:
+		matchLables: 
+		  type: frontend
+
+#########################
+Service-definition.yml
+
+apiVersion: v1
+kind: Service
+metadata: 
+	name: my-service
+spec: 
+	type: NodePort --> if we dont set type, it will be considered ClusterIP by default and it will be accissible only internally
+	ports:
+		- targetPort: 80
+		  port: 80
+		  nodePort: 30008
+	selector:
+		type : frontend (identifies the pods that match this lable)
+
+#######################

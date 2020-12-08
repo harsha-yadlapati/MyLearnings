@@ -1,0 +1,41 @@
+handlng of exceptions --> to help user understand the issue, and give them usaable messages. Helps in debugging.
+
+Once runtime receives the exception object, it tries to find the handler for the exception. Exception Handler is the block of code that can process the exception object. The logic to find the exception handler is simple – starting the search in the method where error occurred, if no appropriate handler found, then move to the caller method and so on. So if methods call stack is A->B->C and exception is raised in method C, then the search for appropriate handler will move from C->B->A. If appropriate exception handler is found, exception object is passed to the handler to process it. The handler is said to be “catching the exception”. If there are no appropriate exception handler found then program terminates printing information about the exception
+
+
+Note that Java Exception handling is a framework that is used to handle runtime errors only, compile time errors are not handled by exception handling in java.
+
+Throwable is the parent class of Java Exceptions Hierarchy and it has two child objects – Error and Exception. Exceptions are further divided into checked exceptions and runtime exception. --> An object should be throwable to throw  it :) 
+
+Java Exception and all of it’s subclasses doesn’t provide any specific methods and all of the methods are defined in the base class Throwable. The exception classes are created to specify different kind of exception scenarios so that we can easily identify the root cause and handle the exception according to it’s type. Throwable class implements Serializable interface for interoperability.
+
+extends is for extending a class.
+
+implements is for implementing an interface
+
+As you can see there isn't much to it. The advantage of exception hierarchies is that if you decide to catch (using try-catch) a certain exception in the hierarchy, then you will automatically also catch all subclasses of that exception too. In other words, you will catch all exceptions from that certain exception and down the hierarchy. In the example with FileNotFoundException, if you catch IOException which is the superclass of FileNotFoundException, you will also catch FileNotFoundException.
+
+
+Catch Late – Since java enforces to either handle the checked exception or to declare it in method signature, sometimes developers tend to catch the exception and log the error. But this practice is harmful because the caller program doesn’t get any notification for the exception. We should catch exception only when we can handle it appropriately. For example, in above method I am throwing exception back to the caller method to handle it. The same method could be used by other applications that might want to process exception in a different manner. While implementing any feature, we should always throw exceptions back to the caller and let them decide how to handle it.
+
+Propagating exception
+
+The Java try with resources construct, AKA Java try-with-resources, is an exception handling mechanism that can automatically close resources like a Java InputStream or a JDBC Connection when you are done with them. To do so, you must open and use the resource within a Java try-with-resources block. When the execution leaves the try-with-resources block, any resource opened within the try-with-resources block is automatically closed, regardless of whether any exceptions are thrown either from inside the try-with-resources block, or when attempting to close the resources.
+
+
+If an exception is thrown both from inside the try-with-resources block, and when a resource is closed (when close() is called), the exception thrown inside the try block will be propagated up the call stack. The exception thrown when the resource was attempted closed will be suppressed. This is opposite of what happens in a normal try-catch-finally block, where the last exception encountered is the exception that is propagated up the call stack. --> here if in catch or finally  an exception is thrown, that will be propagated --> Checked exceptions must be explicitly caught or propagated as described in Basic try-catch-finally Exception Handling. Unchecked exceptions do not have this requirement. They don't have to be caught or declared thrown.
+
+
+
+Checked exceptions in Java extend the java.lang.Exception class. Unchecked exceptions extend the java.lang.RuntimeException. Checked exceptions must be explicitly caught or propagated as described in Basic try-catch-finally Exception Handling. Unchecked exceptions do not have this requirement. They don't have to be caught or declared thrown.
+
+
+Exception Handling
+Concurancy/multithreadding/
+generics
+logging
+persistence
+reflections
+web apps/servlets/ web services
+Distributed Systems Architecture
+

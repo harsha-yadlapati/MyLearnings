@@ -1,0 +1,33 @@
+devops kodekloud
+
+yum --> installs package and its dependencies as well --> like if we install ansible --> it installs python , pyyaml and all --> 
+/etc/yum/repos.d contains the list of repos where yum needs to check for the repos..
+
+yum install package_name
+yum remove package_name
+
+A Linux service is an application (or set of applications) that runs in the background waiting to be used, or carrying out essential tasks. 
+
+httpd is the Apache HyperText Transfer Protocol (HTTP) server program. It is designed to be run as a standalone daemon process. When used like this it will create a pool of child processes or threads to handle requests.
+
+service httpd start or "systemctl start httpd"
+systemctl stop httpd
+systemctl status httpd
+systemclt enable httpd --> start on bootup
+
+
+JDK, SDK, CDK --> helps in develop, build anf run
+
+javadoc is used to generate , documentation files  --> javadoc -d doc MyClass.java
+
+"ant compile jar"
+
+jar command is used to create JAR file 	
+
+we used to have abuild systems build on ANT.. we have build.xml file where we define all the required stuff 
+
+private key, public key
+
+virtualHost in Apache webserver, is the way where you can configure multiple DNS or server names... and document root is the name where the entry point is..  --> httpd.conf file is where you configure above details... 
+
+catalina.out
